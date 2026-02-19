@@ -761,11 +761,10 @@
 
     try {
       const res = await fetch(`${API}/assets/${assetId}/endpoint`, {
-        method: 'HEAD',
         headers: { 'Authorization': `Bearer ${TOKEN}` }
       });
 
-      if (res.ok || res.status === 200) {
+      if (res.ok) {
         btn.disabled = false;
         badge.className = 'badge-downloadable badge-ok';
         badge.textContent = '✓ downloadbar';
@@ -775,24 +774,8 @@
         badge.textContent = '⊘ gesperrt';
       }
     } catch (e) {
-      // HEAD might not be supported — try GET with no-cors fallback
-      try {
-        const res = await fetch(`${API}/assets/${assetId}/endpoint`, {
-          headers: { 'Authorization': `Bearer ${TOKEN}` }
-        });
-        if (res.ok) {
-          btn.disabled = false;
-          badge.className = 'badge-downloadable badge-ok';
-          badge.textContent = '✓ downloadbar';
-        } else {
-          btn.disabled = true;
-          badge.className = 'badge-downloadable badge-locked';
-          badge.textContent = '⊘ gesperrt';
-        }
-      } catch {
-        badge.className = 'badge-downloadable badge-locked';
-        badge.textContent = '? unbekannt';
-      }
+      badge.className = 'badge-downloadable badge-locked';
+      badge.textContent = '? unbekannt';
     }
   }
 
