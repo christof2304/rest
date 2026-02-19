@@ -760,26 +760,44 @@
     if (!btn || !badge) return;
 
     try {
-      const res = await fetch(`${API}/assets/${assetId}/endpoint`, {
+      // Step 1: get endpoint URL
+      const endpointRes = await fetch(`${API}/assets/${assetId}/endpoint`, {
         headers: { 'Authorization': `Bearer ${TOKEN}` }
       });
 
-      if (res.ok) {
-        btn.disabled = false;
-        badge.className = 'badge-downloadable badge-ok';
-        badge.textContent = '✓ downloadbar';
-      } else if (res.status === 400) {
+      if (!endpointRes.ok) {
         btn.disabled = true;
         badge.className = 'badge-downloadable badge-locked';
         badge.textContent = '⊘ kein Download';
-      } else if (res.status === 401 || res.status === 403) {
+        return;
+      }
+
+      const endpoint = await endpointRes.json();
+      const url = endpoint.url || endpoint.options?.url;
+
+      if (!url) {
+        badge.className = 'badge-downloadable badge-locked';
+        badge.textContent = '⊘ keine URL';
+        return;
+      }
+
+      // Step 2: test actual S3 URL with Range request (1 byte only)
+      const testRes = await fetch(url, {
+        headers: { 'Range': 'bytes=0-0' }
+      });
+
+      if (testRes.ok || testRes.status === 206) {
+        btn.disabled = false;
+        badge.className = 'badge-downloadable badge-ok';
+        badge.textContent = '✓ downloadbar';
+      } else if (testRes.status === 401 || testRes.status === 403) {
         btn.disabled = true;
         badge.className = 'badge-downloadable badge-locked';
         badge.textContent = '🔒 gesperrt';
       } else {
         btn.disabled = true;
         badge.className = 'badge-downloadable badge-locked';
-        badge.textContent = '⊘ ' + res.status;
+        badge.textContent = '⊘ ' + testRes.status;
       }
     } catch (e) {
       badge.className = 'badge-downloadable badge-locked';
