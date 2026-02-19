@@ -478,6 +478,19 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+    /* Downloadable badge */
+    .badge-downloadable {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-ok { background: rgba(110,236,216,0.12); color: var(--teal); }
+    .badge-locked { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+    .badge-checking { background: rgba(255,170,0,0.1); color: var(--warning); }
+
     /* Fade in animation */
     .asset-card {
       animation: fadeIn 0.3s ease forwards;
@@ -710,13 +723,14 @@
             <div class="meta-value">${formatSize(asset.bytes)}</div>
           </div>
         </div>
-        <div class="asset-actions">
-          <button class="btn btn-primary download-btn" onclick="downloadAsset(${asset.id}, '${(asset.name || 'asset').replace(/'/g, '')}', this)">
+        <div class="asset-actions" style="align-items:center;">
+          <button class="btn btn-primary download-btn" id="dl-${asset.id}" onclick="downloadAsset(${asset.id}, '${(asset.name || 'asset').replace(/'/g, '')}', this)" disabled>
             ↓ Download
           </button>
           <button class="btn btn-ghost" onclick="copyId(${asset.id})" title="ID kopieren">
             #
           </button>
+          <span class="badge-downloadable badge-checking" id="dlbadge-${asset.id}">⟳ prüfe...</span>
         </div>
         <div class="progress-wrap" id="progress-${asset.id}">
           <div class="progress-bar" id="bar-${asset.id}"></div>
@@ -726,6 +740,60 @@
 
       grid.appendChild(card);
     });
+
+    // Check downloadability in parallel
+    checkAllDownloadable(assets);
+  }
+
+  async function checkAllDownloadable(assets) {
+    // Run in batches of 5 to avoid rate limiting
+    const batchSize = 5;
+    for (let i = 0; i < assets.length; i += batchSize) {
+      const batch = assets.slice(i, i + batchSize);
+      await Promise.all(batch.map(asset => checkDownloadable(asset.id)));
+    }
+  }
+
+  async function checkDownloadable(assetId) {
+    const btn = document.getElementById(`dl-${assetId}`);
+    const badge = document.getElementById(`dlbadge-${assetId}`);
+    if (!btn || !badge) return;
+
+    try {
+      const res = await fetch(`${API}/assets/${assetId}/endpoint`, {
+        method: 'HEAD',
+        headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+
+      if (res.ok || res.status === 200) {
+        btn.disabled = false;
+        badge.className = 'badge-downloadable badge-ok';
+        badge.textContent = '✓ downloadbar';
+      } else {
+        btn.disabled = true;
+        badge.className = 'badge-downloadable badge-locked';
+        badge.textContent = '⊘ gesperrt';
+      }
+    } catch (e) {
+      // HEAD might not be supported — try GET with no-cors fallback
+      try {
+        const res = await fetch(`${API}/assets/${assetId}/endpoint`, {
+          headers: { 'Authorization': `Bearer ${TOKEN}` }
+        });
+        if (res.ok) {
+          btn.disabled = false;
+          badge.className = 'badge-downloadable badge-ok';
+          badge.textContent = '✓ downloadbar';
+        } else {
+          btn.disabled = true;
+          badge.className = 'badge-downloadable badge-locked';
+          badge.textContent = '⊘ gesperrt';
+        }
+      } catch {
+        badge.className = 'badge-downloadable badge-locked';
+        badge.textContent = '? unbekannt';
+      }
+    }
   }
 
   function filterAssets() {
