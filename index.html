@@ -781,11 +781,9 @@
         return;
       }
 
-      // Step 2: test actual S3 URL with Range request (1 byte only)
-      const testRes = await fetch(url, {
-        headers: { 'Range': 'bytes=0-0' }
-      });
-
+      // Step 2: test actual S3 URL — fetch resolves with status after headers, before body
+      const testRes = await fetch(url);
+      // Don't read body, just check status
       if (testRes.ok || testRes.status === 206) {
         btn.disabled = false;
         badge.className = 'badge-downloadable badge-ok';
