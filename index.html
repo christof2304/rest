@@ -781,9 +781,11 @@
         return;
       }
 
-      // Step 2: test actual S3 URL — fetch resolves with status after headers, before body
-      const testRes = await fetch(url);
-      // Don't read body, just check status
+      // Step 2: use accessToken from endpoint response to test S3 URL
+      const accessToken = endpoint.accessToken;
+      const fetchHeaders = accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {};
+      const testRes = await fetch(url, { headers: fetchHeaders });
+
       if (testRes.ok || testRes.status === 206) {
         btn.disabled = false;
         badge.className = 'badge-downloadable badge-ok';
