@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cesium Ion Asset Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #6EECD8;
+      --teal-dark: #3DB8A0;
+      --bg: #0a0e0d;
+      --bg2: #111815;
+      --bg3: #1a2220;
+      --border: #1e2e2b;
+      --text: #e8f5f2;
+      --text-muted: #5a8a7e;
+      --danger: #ff4444;
+      --warning: #ffaa00;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(110,236,216,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(110,236,216,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 32px 48px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--teal);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--teal);
+    }
+
+    .logo-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .status-dot.connected { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
+    .status-dot.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    .status-text {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .main {
+      position: relative;
+      z-index: 10;
+      padding: 32px 48px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      gap: 16px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .asset-count {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--teal);
+    }
+
+    .asset-count-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      min-width: 260px;
+    }
+
+    .search-box input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      width: 100%;
+    }
+
+    .search-box input::placeholder { color: var(--text-muted); }
+
+    .search-icon { color: var(--text-muted); font-size: 14px; }
+
+    .btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--teal);
+      color: var(--bg);
+    }
+    .btn-primary:hover { background: var(--teal-dark); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(255,68,68,0.3);
+    }
+    .btn-danger:hover { background: rgba(255,68,68,0.1); }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Asset Grid */
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .asset-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .asset-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--teal), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .asset-card:hover {
+      border-color: rgba(110,236,216,0.3);
+      transform: translateY(-1px);
+    }
+
+    .asset-card:hover::before { opacity: 1; }
+
+    .asset-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .asset-id {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      font-weight: 500;
+    }
+
+    .asset-type-badge {
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .type-3DTILES { background: rgba(110,236,216,0.15); color: var(--teal); }
+    .type-TERRAIN { background: rgba(255,170,0,0.15); color: var(--warning); }
+    .type-IMAGERY { background: rgba(100,180,255,0.15); color: #64b4ff; }
+    .type-POINTCLOUD { background: rgba(255,100,200,0.15); color: #ff64c8; }
+    .type-KML { background: rgba(200,100,255,0.15); color: #c864ff; }
+    .type-GEOJSON { background: rgba(100,255,150,0.15); color: #64ff96; }
+    .type-default { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+    .asset-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .asset-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      line-height: 1.5;
+      min-height: 16px;
+    }
+
+    .asset-meta {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meta-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    .asset-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .download-btn {
+      flex: 1;
+      justify-content: center;
+      font-size: 10px;
+      padding: 7px 12px;
+    }
+
+    /* Progress bar */
+    .progress-wrap {
+      display: none;
+      margin-top: 12px;
+      background: var(--bg3);
+      border-radius: 4px;
+      height: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal-dark), var(--teal));
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      display: none;
+    }
+
+    /* Loading state */
+    .loading-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      gap: 20px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 2px solid var(--border);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* Error state */
+    .error-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .error-icon { font-size: 40px; }
+
+    .error-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--danger);
+    }
+
+    .error-msg {
+      font-size: 12px;
+      color: var(--text-muted);
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    /* Empty state */
+    .empty-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      gap: 12px;
+    }
+
+    .empty-icon { font-size: 36px; opacity: 0.4; }
+    .empty-text { font-size: 12px; color: var(--text-muted); letter-spacing: 0.1em; }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 12px;
+      color: var(--text);
+      z-index: 1000;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 360px;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success { border-color: rgba(110,236,216,0.4); }
+    .toast.error { border-color: rgba(255,68,68,0.4); }
+
+    /* Download all button area */
+    .bulk-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 24px;
+    }
+
+    .bulk-info {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .bulk-info span {
+      color: var(--teal);
+      font-weight: 700;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* Fade in animation */
+    .asset-card {
+      animation: fadeIn 0.3s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+      header, .main { padding: 20px; }
+      .asset-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🌍</div>
+    <div>
+      <div class="logo-text">geoBIM.app</div>
+      <div class="logo-sub">Ion Asset Manager</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" id="statusDot"></div>
+    <div class="status-text" id="statusText">CONNECTING...</div>
+    <button class="btn btn-ghost" onclick="openTokenModal()" style="margin-left:8px;">🔑 Token</button>
+  </div>
+</header>
+
+<!-- Token Modal -->
+<div id="tokenModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:32px; width:500px; max-width:90vw;">
+    <div style="font-family:'Syne',sans-serif; font-size:18px; font-weight:700; margin-bottom:6px;">Cesium Ion Token</div>
+    <div style="font-size:11px; color:var(--text-muted); margin-bottom:20px; letter-spacing:0.08em;">Token wird im Browser gespeichert (localStorage)</div>
+    <textarea id="tokenInput"
+      style="width:100%; height:100px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:11px; resize:vertical; outline:none; line-height:1.5;"
+      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."></textarea>
+    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="resetToken()">&#x21BA; Default</button>
+      <button class="btn btn-ghost" onclick="closeTokenModal()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="applyToken()">&#x2713; &Uuml;bernehmen</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div>
+        <div class="asset-count" id="assetCount">—</div>
+        <div class="asset-count-label">Assets</div>
+      </div>
+    </div>
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="searchInput" placeholder="Suchen..." oninput="filterAssets()">
+    </div>
+    <button class="btn btn-ghost" onclick="loadAssets()">↻ Aktualisieren</button>
+  </div>
+
+  <div class="bulk-bar" id="bulkBar" style="display:none;">
+    <div class="bulk-info">
+      <span id="visibleCount">0</span> Assets sichtbar
+    </div>
+    <button class="btn btn-ghost" onclick="copyAllIds()">📋 Alle IDs kopieren</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <div class="loading-text">Lade Assets von Cesium Ion...</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-screen" id="errorScreen">
+    <div class="error-icon">⚠</div>
+    <div class="error-title">API Fehler</div>
+    <div class="error-msg" id="errorMsg"></div>
+    <button class="btn btn-ghost" onclick="loadAssets()">Erneut versuchen</button>
+  </div>
+
+  <!-- Empty -->
+  <div class="empty-screen" id="emptyScreen">
+    <div class="empty-icon">📭</div>
+    <div class="empty-text">Keine Assets gefunden</div>
+  </div>
+
+  <!-- Grid -->
+  <div class="asset-grid" id="assetGrid"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const DEFAULT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4ZGM1ZDdlNi02ZDFhLTRkMGItYTNhNy0wZTRiM2RhZWFlNWUiLCJpZCI6Mzg3NDE4LCJpYXQiOjE3NzAyOTk1MTR9.kdRP3yJ-1NV3Y0vccI14W8-1oeVKOVoOUQAfkjeBCg0';
+  const API = 'https://api.cesium.com/v1';
+  let TOKEN = localStorage.getItem('cesium_ion_token') || DEFAULT_TOKEN;
+
+  let allAssets = [];
+
+  function setStatus(state, text) {
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.className = 'status-dot ' + state;
+    txt.textContent = text;
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = (type === 'success' ? '✓ ' : '✗ ') + msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('de-DE', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  }
+
+  function getTypeClass(type) {
+    const map = {
+      '3DTILES': 'type-3DTILES',
+      'TERRAIN': 'type-TERRAIN',
+      'IMAGERY': 'type-IMAGERY',
+      'POINTCLOUD': 'type-POINTCLOUD',
+      'KML': 'type-KML',
+      'GEOJSON': 'type-GEOJSON',
+    };
+    return map[type] || 'type-default';
+  }
+
+  async function loadAssets() {
+    document.getElementById('loadingScreen').style.display = 'flex';
+    document.getElementById('errorScreen').style.display = 'none';
+    document.getElementById('emptyScreen').style.display = 'none';
+    document.getElementById('assetGrid').innerHTML = '';
+    document.getElementById('bulkBar').style.display = 'none';
+    document.getElementById('assetCount').textContent = '—';
+    setStatus('', 'CONNECTING...');
+
+    try {
+      let assets = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const res = await fetch(`${API}/assets?page=${page}&limit=100`, {
+          headers: { 'Authorization': `Bearer ${TOKEN}` }
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+        const data = await res.json();
+        assets = assets.concat(data.items || []);
+
+        hasMore = data.nextPage != null;
+        page++;
+      }
+
+      allAssets = assets;
+      document.getElementById('loadingScreen').style.display = 'none';
+      setStatus('connected', 'CONNECTED — ' + assets.length + ' ASSETS');
+      renderAssets(assets);
+
+    } catch (err) {
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('errorScreen').style.display = 'flex';
+      document.getElementById('errorMsg').textContent = err.message;
+      setStatus('error', 'CONNECTION FAILED');
+    }
+  }
+
+  function renderAssets(assets) {
+    const grid = document.getElementById('assetGrid');
+    grid.innerHTML = '';
+
+    document.getElementById('assetCount').textContent = assets.length;
+    document.getElementById('visibleCount').textContent = assets.length;
+
+    if (assets.length === 0) {
+      document.getElementById('emptyScreen').style.display = 'flex';
+      return;
+    }
+
+    document.getElementById('bulkBar').style.display = 'flex';
+
+    assets.forEach((asset, i) => {
+      const card = document.createElement('div');
+      card.className = 'asset-card';
+      card.style.animationDelay = Math.min(i * 0.03, 0.5) + 's';
+
+      const typeClass = getTypeClass(asset.type);
+
+      card.innerHTML = `
+        <div class="asset-header">
+          <div class="asset-id">ID: ${asset.id}</div>
+          <div class="asset-type-badge ${typeClass}">${asset.type || 'UNKNOWN'}</div>
+        </div>
+        <div class="asset-name">${asset.name || 'Unbenannt'}</div>
+        <div class="asset-desc">${asset.description || ''}</div>
+        <div class="asset-meta">
+          <div class="meta-item">
+            <div class="meta-label">Erstellt</div>
+            <div class="meta-value">${formatDate(asset.dateAdded)}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Status</div>
+            <div class="meta-value" style="color: ${asset.status === 'COMPLETE' ? 'var(--teal)' : 'var(--warning)'}">
+              ${asset.status || '—'}
+            </div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Bytes</div>
+            <div class="meta-value">${formatSize(asset.bytes)}</div>
+          </div>
+        </div>
+        <div class="asset-actions">
+          <button class="btn btn-primary download-btn" onclick="downloadAsset(${asset.id}, '${(asset.name || 'asset').replace(/'/g, '')}', this)">
+            ↓ Download
+          </button>
+          <button class="btn btn-ghost" onclick="copyId(${asset.id})" title="ID kopieren">
+            #
+          </button>
+        </div>
+        <div class="progress-wrap" id="progress-${asset.id}">
+          <div class="progress-bar" id="bar-${asset.id}"></div>
+        </div>
+        <div class="progress-label" id="label-${asset.id}"></div>
+      `;
+
+      grid.appendChild(card);
+    });
+  }
+
+  function filterAssets() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = allAssets.filter(a =>
+      (a.name || '').toLowerCase().includes(q) ||
+      (a.description || '').toLowerCase().includes(q) ||
+      String(a.id).includes(q) ||
+      (a.type || '').toLowerCase().includes(q)
+    );
+    renderAssets(filtered);
+  }
+
+  async function downloadAsset(assetId, assetName, btn) {
+    btn.disabled = true;
+    btn.textContent = '⟳ Lade Endpoint...';
+
+    const progressWrap = document.getElementById(`progress-${assetId}`);
+    const progressBar = document.getElementById(`bar-${assetId}`);
+    const progressLabel = document.getElementById(`label-${assetId}`);
+
+    try {
+      // Get download endpoint
+      const endpointRes = await fetch(`${API}/assets/${assetId}/endpoint`, {
+        headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+
+      if (!endpointRes.ok) throw new Error(`Endpoint Fehler: HTTP ${endpointRes.status}`);
+
+      const endpoint = await endpointRes.json();
+      const url = endpoint.url || endpoint.options?.url;
+
+      if (!url) throw new Error('Keine Download-URL erhalten');
+
+      // Try to fetch the file
+      btn.textContent = '↓ Lade Datei...';
+      progressWrap.style.display = 'block';
+      progressLabel.style.display = 'block';
+      progressLabel.textContent = 'Verbinde...';
+
+      const fileRes = await fetch(url);
+      if (!fileRes.ok) throw new Error(`Download Fehler: HTTP ${fileRes.status}`);
+
+      const contentLength = fileRes.headers.get('content-length');
+      const total = contentLength ? parseInt(contentLength) : null;
+
+      const reader = fileRes.body.getReader();
+      const chunks = [];
+      let received = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+
+        if (total) {
+          const pct = Math.round((received / total) * 100);
+          progressBar.style.width = pct + '%';
+          progressLabel.textContent = `${formatSize(received)} / ${formatSize(total)} (${pct}%)`;
+        } else {
+          progressLabel.textContent = `${formatSize(received)} heruntergeladen...`;
+          // Animate indeterminate
+          progressBar.style.width = '60%';
+        }
+      }
+
+      // Determine file extension from content-type or URL
+      const contentType = fileRes.headers.get('content-type') || '';
+      let ext = '.bin';
+      if (url.includes('.glb') || contentType.includes('model/gltf-binary')) ext = '.glb';
+      else if (url.includes('.gltf')) ext = '.gltf';
+      else if (url.includes('.json') || contentType.includes('json')) ext = '.json';
+      else if (url.includes('.zip') || contentType.includes('zip')) ext = '.zip';
+      else if (url.includes('tileset')) ext = '.json';
+
+      const blob = new Blob(chunks);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${assetName.replace(/[^a-zA-Z0-9_-]/g, '_')}_${assetId}${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      progressBar.style.width = '100%';
+      progressLabel.textContent = `✓ Download abgeschlossen (${formatSize(received)})`;
+      btn.textContent = '✓ Fertig';
+      btn.style.background = 'var(--teal-dark)';
+      showToast(`${assetName} heruntergeladen`);
+
+    } catch (err) {
+      progressLabel.textContent = '✗ ' + err.message;
+      progressLabel.style.color = 'var(--danger)';
+      btn.disabled = false;
+      btn.textContent = '↓ Download';
+      showToast(err.message, 'error');
+    }
+  }
+
+  function copyId(id) {
+    navigator.clipboard.writeText(String(id));
+    showToast(`ID ${id} kopiert`);
+  }
+
+  function copyAllIds() {
+    const ids = allAssets.map(a => a.id).join(', ');
+    navigator.clipboard.writeText(ids);
+    showToast(`${allAssets.length} IDs kopiert`);
+  }
+
+  // Token Modal
+  function openTokenModal() {
+    document.getElementById('tokenInput').value = TOKEN;
+    document.getElementById('tokenModal').style.display = 'flex';
+  }
+
+  function closeTokenModal() {
+    document.getElementById('tokenModal').style.display = 'none';
+  }
+
+  function applyToken() {
+    const val = document.getElementById('tokenInput').value.trim();
+    if (!val) { showToast('Kein Token eingegeben', 'error'); return; }
+    TOKEN = val;
+    localStorage.setItem('cesium_ion_token', val);
+    closeTokenModal();
+    showToast('Token gespeichert — lade Assets...');
+    loadAssets();
+  }
+
+  function resetToken() {
+    TOKEN = DEFAULT_TOKEN;
+    localStorage.removeItem('cesium_ion_token');
+    document.getElementById('tokenInput').value = DEFAULT_TOKEN;
+    showToast('Default Token wiederhergestellt');
+  }
+
+  // Close modal on backdrop click
+  document.getElementById('tokenModal').addEventListener('click', function(e) {
+    if (e.target === this) closeTokenModal();
+  });
+
+  // Init
+  loadAssets();
+</script>
+</body>
+</html>
