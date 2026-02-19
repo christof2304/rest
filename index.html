@@ -768,10 +768,18 @@
         btn.disabled = false;
         badge.className = 'badge-downloadable badge-ok';
         badge.textContent = '✓ downloadbar';
+      } else if (res.status === 400) {
+        btn.disabled = true;
+        badge.className = 'badge-downloadable badge-locked';
+        badge.textContent = '⊘ kein Download';
+      } else if (res.status === 401 || res.status === 403) {
+        btn.disabled = true;
+        badge.className = 'badge-downloadable badge-locked';
+        badge.textContent = '🔒 gesperrt';
       } else {
         btn.disabled = true;
         badge.className = 'badge-downloadable badge-locked';
-        badge.textContent = '⊘ gesperrt';
+        badge.textContent = '⊘ ' + res.status;
       }
     } catch (e) {
       badge.className = 'badge-downloadable badge-locked';
